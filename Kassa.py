@@ -1,6 +1,8 @@
 import json
+import os
 import sys
 
+os.chdir(os.path.dirname(__file__))
 # import win32api
 # import win32print
 from PyQt5 import QtCore, QtGui, QtWidgets

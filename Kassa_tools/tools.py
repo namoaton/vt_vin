@@ -1,7 +1,7 @@
 import datetime
 import pymysql as sql
 import configparser
-from Kassa import comm
+# from Kassa import comm
 
 # Create conf file in  Kassa_tools/kassa.conf
 # with  such content
