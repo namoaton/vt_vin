@@ -24,9 +24,10 @@ class Report(QtWidgets.QMainWindow):
             QtWidgets.QAbstractScrollArea.AdjustToContents)
         self.report_table.setColumnCount(6)
         self.report_table.setRowCount(0)
-
-        self.report_table.setHorizontalHeaderLabels(
-            ["№", "Дата", "Контрагент", "Сума", "Примітки", "Стаття витрат"])
+        header_list = ["№", "Дата", "Контрагент", "Сума", "Примітки", "Стаття витрат"]
+        if self.op_type == 0 :
+            header_list[5] = 'Стаття находжень'
+        self.report_table.setHorizontalHeaderLabels(header_list)
         self.report_table.resizeColumnsToContents()
         self.report_table.resizeRowsToContents()
         self.report_table.setMinimumHeight(300)

@@ -10,16 +10,20 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from Kassa_tools.Check import Check
 from Kassa_tools.DateDialogs import *
 from Kassa_tools.Report import Report
-from Kassa_tools.Transactions import Transaction, AddTransaction
+from Kassa_tools.Postachalnik import Postachalnik
+from Kassa_tools.Transactions import Transaction, AddTransaction, RemoveTransaction
 from Kassa_tools.tools import *
+
 
 # last_money = 1028
 
 class Communicate(QtCore.QObject):
     reload_all = QtCore.pyqtSignal()
 
+
 comm = Communicate()
 last_money = get_last_money()
+
 
 class MainWindow(QtWidgets.QMainWindow):
     # procDone = QtCore.pyqtSignal(str)
@@ -37,7 +41,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.add_menu = self.menubar.addMenu('Надходження')
         self.vydacha_menu = self.menubar.addMenu('Видача')
         self.report_menu = self.menubar.addMenu('Звіти')
-
+        self.record_menu = self.menubar.addMenu('Записи')
+        self.postach_menu = self.menubar.addMenu('Постачальник')
+        self.postach_remove = QtWidgets.QAction('Замінити постачальника', self)
+        self.postach_remove.triggered.connect(self.postach_replace)
+        self.postach_menu.addAction(self.postach_remove)
         self.add_menu_new = QtWidgets.QAction('Внессення', self)
         self.add_menu_new.triggered.connect(lambda: self.vnesennya(op_type=0))
         self.add_menu_do_vydachi = QtWidgets.QAction('До видачі', self)
@@ -93,6 +101,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.date_makul_bn_report_menu = QtWidgets.QAction(
             'Звіт макулатура бн под даті')
 
+        self.delete_record_menu = QtWidgets.QAction(
+            'Видалити')
 
         self.date_vytraty_report_menu.triggered.connect(
             lambda: self.date_report(1))
@@ -106,6 +116,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self.date_report(0))
         self.period_nadh_report_menu.triggered.connect(
             lambda: self.period_report(0))
+        self.delete_record_menu.triggered.connect(self.remove_record)
 
         self.report_menu.addAction(self.date_vytraty_report_menu)
         self.report_menu.addAction(self.period_vytraty_report_menu)
@@ -114,22 +125,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.report_menu.addAction(self.date_nadh_report_menu)
         self.report_menu.addAction(self.period_nadh_report_menu)
 
+        self.record_menu.addAction(self.delete_record_menu)
         # self.report_menu.addAction(self.date_polymer_bn_report_menu)
         # self.report_menu.addAction(self.period_polymer_bn_report_menu)
         # self.report_menu.addAction(self.date_makul_bn_report_menu)
         # self.report_menu.addAction(self.period_makul_bn_report_menu)
+        self.remove = RemoveTransaction()
         self.dateDialog = DateDialog()
         self.doubleDateDialog = DoubleDateDialog()
         self.addTransaction = AddTransaction()
+        self.postachReplace = Postachalnik()
+
+    def postach_replace(self):
+        self.postachReplace.show()
+
+    def remove_record(self):
+        self.remove.show()
 
     def get_tr_list(self, op_type, db_table, data1=0, data2=0):
         tr_list = []
         if data2 != 0:
             end_date = (
-                data2 + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+                    data2 + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         else:
             end_date = (
-                data1 + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+                    data1 + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         begin_date = data1.strftime('%Y-%m-%d')
         query = "SELECT * FROM %s WHERE op_type=%d and data >= '%s' AND data<='%s'" % (
             db_table, op_type, begin_date, end_date)
@@ -139,17 +159,16 @@ class MainWindow(QtWidgets.QMainWindow):
         for result in results:
             tr_list.append(
                 Transaction(
-                    t_id = result[0],
-                    data = '{0:%d-%m-%Y %H:%M}'.format(result[1]),
-                    kontragent = result[2],
-                    summa = float(result[3]),
-                    zvit = int(result[4]),
-                    annot = result[5],
-                    op_type = int(result[6]),
-                    stattya_vytrat = result[7]))
+                    t_id=result[0],
+                    data='{0:%d-%m-%Y %H:%M}'.format(result[1]),
+                    kontragent=result[2],
+                    summa=float(result[3]),
+                    zvit=int(result[4]),
+                    annot=result[5],
+                    op_type=int(result[6]),
+                    stattya_vytrat=result[7]))
         # print(tr_list)
         return tr_list
-
 
     def period_report(self, op_type):
         begin_date, begin_time, end_date, end_time, ok = self.doubleDateDialog.getDateTime(
@@ -188,6 +207,7 @@ class MainWindow(QtWidgets.QMainWindow):
 class Window(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        Transaction.comm = comm
         self.init_ui()
 
     def init_ui(self):
@@ -195,7 +215,7 @@ class Window(QtWidgets.QWidget):
 
         self.newfont = QtGui.QFont("Times", 18, QtGui.QFont.Bold)
         self.newfont_table = QtGui.QFont("Times", 12, QtGui.QFont.Bold)
-
+        # self.active_kassir = kassiry[0]
         self.money_label = QtWidgets.QLabel('Гроші оборотні в касі')
         self.money_label.setFont(self.newfont)
 
@@ -208,10 +228,10 @@ class Window(QtWidgets.QWidget):
         self.money_vydacha = QtWidgets.QLabel('0')
         self.money_vydacha.setFont(self.newfont)
 
-        self.zalyshok_label = QtWidgets.QLabel()  #('Попередній залишок')
+        self.zalyshok_label = QtWidgets.QLabel()  # ('Попередній залишок')
         self.zalyshok_label.setFont(self.newfont)
 
-        self.zalyshok = QtWidgets.QLabel()  #(str(last_money))
+        self.zalyshok = QtWidgets.QLabel()  # (str(last_money))
         self.zalyshok.setFont(self.newfont)
 
         self.all_money_label = QtWidgets.QLabel('Залишок в касі')
@@ -443,7 +463,7 @@ class Window(QtWidgets.QWidget):
         main_box.addLayout(v_box_main_0)
         main_box.addLayout(v_box_main_1)
         self.setLayout(main_box)
-        self.setWindowTitle('Kassa_tools')
+        self.setWindowTitle('Kassa')
         self.setGeometry(300, 300, 300, 200)
 
         self.set_sum_values()
@@ -519,7 +539,7 @@ class Window(QtWidgets.QWidget):
         for key in check_items.keys():
             check_text = check_text + key + " : " + str(
                 check_items[key]['weight']) + " : " + str(
-                    check_items[key]['price']) + "\n"
+                check_items[key]['price']) + "\n"
 
         QtWidgets.QMessageBox.about(self, 'Документ %s' % tmp_list[0],
                                     check_text)
@@ -601,6 +621,11 @@ class Window(QtWidgets.QWidget):
         write_to_db("UPDATE vydacha SET op_type=2, summa=%s  WHERE id=%s" %
                     (summ, index))
         comm.reload_all.emit()
+        # result = make_request("SELECT * FROM records WHERE id =%s" % index)
+        # archEdit = EditWaitForArchive(self, index, result)
+        # archEdit.procDone.connect(self.reload_archive)
+        # archEdit.show()
+        # self.completed.connect(self.reload_archive)
 
     def set_sum_values(self):
         global summ_before_period
@@ -610,23 +635,23 @@ class Window(QtWidgets.QWidget):
         print("total_summ", total_sum, summ_before_period["nadhodjennya"],
               summ_cur_period["nadhodjennya"])
 
-        vytraty_sum_period = (summ_before_period["vytraty_za_tovar"] +\
-                  summ_before_period["vytraty"])
+        vytraty_sum_period = (summ_before_period["vytraty_za_tovar"] + \
+                              summ_before_period["vytraty"])
         vytraty_sum = summ_cur_period["vytraty_za_tovar"] + summ_cur_period["vytraty"]
 
-        vytray_pid_zvit_period = summ_before_period["vytraty_za_tovar_pid_zvit"] +\
-                  summ_before_period["vytraty_pid_zvit"]
+        vytray_pid_zvit_period = summ_before_period["vytraty_za_tovar_pid_zvit"] + \
+                                 summ_before_period["vytraty_pid_zvit"]
 
         vytray_pid_zvit = summ_cur_period["vytraty_za_tovar_pid_zvit"] + \
-               summ_cur_period["vytraty_pid_zvit"]
+                          summ_cur_period["vytraty_pid_zvit"]
 
         print("vytraty_sum", vytraty_sum, vytraty_sum_period)
         print("vytray_pid_zvit", vytray_pid_zvit, vytray_pid_zvit_period)
 
-        self.all_money.setText(str(total_sum - vytraty_sum - vytray_pid_zvit -\
-         vytray_pid_zvit_period - vytraty_sum_period ))
-        self.money_vydacha.setText(str(summ_cur_period["vydacha"] +\
-         summ_before_period["vydacha"]))
+        self.all_money.setText(str(total_sum - vytraty_sum - vytray_pid_zvit - \
+                                   vytray_pid_zvit_period - vytraty_sum_period))
+        self.money_vydacha.setText(str(summ_cur_period["vydacha"] + \
+                                       summ_before_period["vydacha"]))
 
         self.money.setText(
             str(

@@ -1,12 +1,13 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 
-from Kassa_tools.tools import edit_transaction, add_transaction, transaction_type
+from Kassa_tools.tools import edit_transaction, add_transaction, transaction_type, write_to_db, get_kontragents
 
 
 class Transaction(object):
     """
     Describes typical transaction
     """
+    comm = None
 
     def __init__(self,
                  data=0,
@@ -16,7 +17,8 @@ class Transaction(object):
                  zvit=0,
                  annot="",
                  t_id=0,
-                 stattya_vytrat=""):
+                 stattya_vytrat="",
+                 com_event=None):
         super(Transaction, self).__init__()
         self.data = data
         self.kontragent = kontragent
@@ -27,6 +29,7 @@ class Transaction(object):
         self.annot = annot
         self.t_id = t_id
         self.current_money = 0
+        comm = com_event
 
     def print(self):
         print("Operation ", self.data, self.kontragent, self.summa,
@@ -50,7 +53,7 @@ class Transaction(object):
 
     def add(self):
         print("+++++")
-        self.current_money =  self.current_money + self.summa
+        self.current_money = self.current_money + self.summa
 
     def withdraw(self):
         print("----")
@@ -58,6 +61,7 @@ class Transaction(object):
 
     def make_withdraw(self):
         self.op_type = 2
+
 
 class AddTransaction(QtWidgets.QMainWindow):
     def __init__(self, parent=None, op_type=0, edit=0, t_id=0):
@@ -69,9 +73,9 @@ class AddTransaction(QtWidgets.QMainWindow):
 
     def init_ui(self):
         self.setMinimumSize(QtCore.QSize(480, 80))
-        self.setWindowTitle("Добавить запись")
+        self.setWindowTitle("Додати запис")
         if self.edit:
-            self.setWindowTitle("Редактировать запись")
+            self.setWindowTitle("Редагувати запис")
         central_widget = QtWidgets.QWidget(self)
         self.setCentralWidget(central_widget)
         self.newfont = QtGui.QFont("Times", 12, QtGui.QFont.Bold)
@@ -87,6 +91,9 @@ class AddTransaction(QtWidgets.QMainWindow):
         self.kontragent_name_label.setFont(self.newfont)
         self.kontragent_name = QtWidgets.QLineEdit()
         self.kontragent_name.setFont(self.newfont)
+        self.input_completer = QtWidgets.QCompleter(get_kontragents())
+        self.input_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.kontragent_name.setCompleter(self.input_completer)
         self.stattya_vytrat_label = QtWidgets.QLabel('Стаття витрат')
         self.stattya_vytrat_label.setFont(self.newfont)
         self.stattya_vytrat = QtWidgets.QLineEdit()
@@ -106,9 +113,9 @@ class AddTransaction(QtWidgets.QMainWindow):
         # self.contact = QtWidgets.QLineEdit()
         # self.contact.setFont(self.newfont)
         if self.edit:
-            self.write_button = QtWidgets.QPushButton('Изменить')
+            self.write_button = QtWidgets.QPushButton('Змінити')
         else:
-            self.write_button = QtWidgets.QPushButton('Добавить')
+            self.write_button = QtWidgets.QPushButton('Додати')
         self.write_button.setFont(self.newfont)
         v_box_0 = QtWidgets.QVBoxLayout()
         v_box_0.addWidget(self.op_type_label)
@@ -140,11 +147,16 @@ class AddTransaction(QtWidgets.QMainWindow):
     def change_op_type(self, op_type):
         self.op_type = op_type
         self.op_type_tr.setText(transaction_type[self.op_type])
+        if self.op_type == 0:
+            self.stattya_vytrat_label.setText('Стаття надходжень')
+            return
+        self.stattya_vytrat_label.setText('Стаття витрат')
 
     def change_edit(self, edit):
         self.edit = edit
-        #if 0 = create
-        #if 1 = update
+        # if 0 = create
+        # if 1 = update
+
     def set_id(self, t_id):
         self.id = t_id
 
@@ -166,7 +178,7 @@ class AddTransaction(QtWidgets.QMainWindow):
                 stattya_vytrat=self.stattya_vytrat.text())
             if tr.op_type == 3 or tr.op_type == 4:
                 tr.zvit = 1
-            tr. print()
+            tr.print()
             add_transaction(tr)
             self.clear()
 
@@ -180,9 +192,49 @@ class AddTransaction(QtWidgets.QMainWindow):
             zvit=0,
             t_id=self.id,
             stattya_vytrat=self.stattya_vytrat.text())
-        tr. print()
+        tr.print()
         edit_transaction(tr, tr.t_id, str(tr.summa), tr.op_type, tr.annot,
                          tr.data, tr.stattya_vytrat)
         self.clear()
         self.close()
 
+
+class RemoveTransaction(QtWidgets.QMainWindow):
+    def __init__(self, parent=None, op_type=0, edit=0, t_id=0):
+        super().__init__(parent)
+        self.op_type = op_type
+        self.edit = edit
+        self.id = t_id
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle("Видалити запис")
+        if self.edit:
+            self.setWindowTitle("Видалити запис")
+        central_widget = QtWidgets.QWidget(self)
+        self.setCentralWidget(central_widget)
+        self.newfont = QtGui.QFont("Arial", 12, QtGui.QFont.Bold)
+        self.num_label = QtWidgets.QLabel('Номер')
+        self.num_label.setFont(self.newfont)
+        self.num = QtWidgets.QLineEdit()
+        self.num.setFont(self.newfont)
+        self.remove_button = QtWidgets.QPushButton('Видалити')
+        self.remove_button.setFont(self.newfont)
+        v_box_0 = QtWidgets.QHBoxLayout()
+        v_box_0.addWidget(self.num_label)
+        v_box_0.addWidget(self.num)
+        v_box_1 = QtWidgets.QVBoxLayout()
+        v_box_1.addLayout(v_box_0)
+        v_box_1.addWidget(self.remove_button)
+        self.remove_button.clicked.connect(self.remove)
+        central_widget.setLayout(v_box_1)
+
+    def remove(self, op_type):
+        print("Ok")
+        num_to_remove = self.num.text()
+        if num_to_remove:
+            query = "DELETE FROM %s WHERE id=%s" % ('vydacha', num_to_remove)
+            print(query)
+            write_to_db(query)
+            self.num.setText("")
+        self.close()

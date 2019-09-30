@@ -206,7 +206,7 @@ def add_transaction(transaction):
                 transaction.zvit, transaction.annot, transaction.op_type, transaction.stattya_vytrat)
     print(query)
     write_to_db(query)
-    comm.reload_all.emit()
+    transaction.comm.reload_all.emit()
 
 
 def edit_transaction(transaction, id, summa, op_type, annot, data, stattya_vytrat):
@@ -218,4 +218,13 @@ def edit_transaction(transaction, id, summa, op_type, annot, data, stattya_vytra
         db_name, summa, annot, op_type, data_str, stattya_vytrat, id)
     print(query)
     write_to_db(query)
-    comm.reload_all.emit()
+    transaction.comm.reload_all.emit()
+
+def get_kontragents():
+    query = "SELECT kontragent FROM vydacha"
+    rq = make_request(query)
+    kontragents  = set()
+    for elem in rq:
+        kontragents.add(elem[0])
+    print (kontragents)
+    return kontragents
