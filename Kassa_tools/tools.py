@@ -169,6 +169,7 @@ def get_summ_period():
         "vytraty": rq_vyd
     }
     print(summ_before_period)
+    return summ_before_period
 
 
 def get_summ_cur():
@@ -194,6 +195,7 @@ def get_summ_cur():
         "vytraty": rq_vyd
     }
     print(summ_cur_period)
+    return  summ_cur_period
 
 
 def add_transaction(transaction):

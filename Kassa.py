@@ -813,9 +813,9 @@ class Window(QtWidgets.QWidget):
 
 
 print("Get before period")
-get_summ_period()
+summ_before_period = get_summ_period()
 print("Get  cur period")
-get_summ_cur()
+summ_cur_period = get_summ_cur()
 app = QtWidgets.QApplication(sys.argv)
 # a_window = Window()
 a_window = MainWindow()
