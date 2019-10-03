@@ -16,6 +16,10 @@ from Kassa_tools.tools import *
 
 
 # last_money = 1028
+print("Get before period")
+summ_before_period = get_summ_period()
+print("Get  cur period")
+summ_cur_period = get_summ_cur()
 
 class Communicate(QtCore.QObject):
     reload_all = QtCore.pyqtSignal()
@@ -788,6 +792,8 @@ class Window(QtWidgets.QWidget):
             row_count = row_count + 1
 
     def reload_all(self):
+        global summ_cur_period
+        global summ_before_period
         self.clear_table(self.nadhodjennya_table)
         self.fill_table(self.nadhodjennya_table, self.get_nadhodjennya())
 
@@ -801,8 +807,8 @@ class Window(QtWidgets.QWidget):
         self.fill_table(self.vytraty_za_tovar_table, self.get_vitraty(2, 3))
 
         self.set_sum(self.table_list)
-        get_summ_period()
-        get_summ_cur()
+        summ_before_period = get_summ_period()
+        summ_cur_period = get_summ_cur()
         self.set_sum_values()
 
     def clear_table(self, table):
@@ -812,10 +818,7 @@ class Window(QtWidgets.QWidget):
         table.setRowCount(0)
 
 
-print("Get before period")
-summ_before_period = get_summ_period()
-print("Get  cur period")
-summ_cur_period = get_summ_cur()
+
 app = QtWidgets.QApplication(sys.argv)
 # a_window = Window()
 a_window = MainWindow()

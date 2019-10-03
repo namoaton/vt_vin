@@ -237,4 +237,5 @@ class RemoveTransaction(QtWidgets.QMainWindow):
             print(query)
             write_to_db(query)
             self.num.setText("")
+        Transaction.comm.reload_all.emit()
         self.close()
