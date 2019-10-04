@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
-
+import json
 from Kassa_tools.tools import make_weight_request
 
 

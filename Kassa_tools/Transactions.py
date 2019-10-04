@@ -1,7 +1,6 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 
-from Kassa_tools.tools import edit_transaction, add_transaction, transaction_type, write_to_db, get_kontragents
-
+from Kassa_tools.tools import *
 
 class Transaction(object):
     """
@@ -98,6 +97,9 @@ class AddTransaction(QtWidgets.QMainWindow):
         self.stattya_vytrat_label.setFont(self.newfont)
         self.stattya_vytrat = QtWidgets.QLineEdit()
         self.stattya_vytrat.setFont(self.newfont)
+        self.vytraty_completer = QtWidgets.QCompleter(get_stattya_vytrat())
+        self.vytraty_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.stattya_vytrat.setCompleter(self.vytraty_completer)
         self.summa_label = QtWidgets.QLabel('Сума')
         self.summa_label.setFont(self.newfont)
         self.summa = QtWidgets.QLineEdit()
@@ -144,6 +146,11 @@ class AddTransaction(QtWidgets.QMainWindow):
             self.write_button.clicked.connect(self.write_tr)
         central_widget.setLayout(main_box)
 
+    def update_completer(self):
+        self.vytraty_completer = QtWidgets.QCompleter(get_stattya_vytrat())
+        self.vytraty_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.stattya_vytrat.setCompleter(self.vytraty_completer)
+
     def change_op_type(self, op_type):
         self.op_type = op_type
         self.op_type_tr.setText(transaction_type[self.op_type])
@@ -180,6 +187,7 @@ class AddTransaction(QtWidgets.QMainWindow):
                 tr.zvit = 1
             tr.print()
             add_transaction(tr)
+            self.update_completer()
             self.clear()
 
     def edit_tr(self):
@@ -195,6 +203,7 @@ class AddTransaction(QtWidgets.QMainWindow):
         tr.print()
         edit_transaction(tr, tr.t_id, str(tr.summa), tr.op_type, tr.annot,
                          tr.data, tr.stattya_vytrat)
+        self.update_completer()
         self.clear()
         self.close()
 

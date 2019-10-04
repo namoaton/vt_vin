@@ -230,3 +230,12 @@ def get_kontragents():
         kontragents.add(elem[0])
     print (kontragents)
     return kontragents
+
+def get_stattya_vytrat():
+    query = "SELECT stattya_vytrat FROM vydacha"
+    rq = make_request(query)
+    vytraty = set()
+    for elem in rq:
+        vytraty.add(elem[0])
+    print(vytraty)
+    return  vytraty
