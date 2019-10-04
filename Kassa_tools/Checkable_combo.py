@@ -15,10 +15,13 @@ class CheckableComboBox(QtWidgets.QComboBox):
         item = self.model().item(self.count() - 1, 0)
         item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
         item.setCheckState(QtCore.Qt.Unchecked)
-
     def itemChecked(self, index):
         item = self.model().item(index, 0)
         return item.checkState() == QtCore.Qt.Checked
+
+    def addItems(self, items):
+        for i in items:
+            self.addItem(i)
 
     def handleItemPressed(self, index):
         item = self.model().itemFromIndex(index)

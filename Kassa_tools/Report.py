@@ -5,6 +5,7 @@ from Kassa_tools.Check import Check
 from Kassa_tools.tools import transaction_type
 from Kassa_tools.Checkable_combo import CheckableComboBox
 
+
 class Report(QtWidgets.QMainWindow):
     def __init__(self, parent=None, op_type=0, tr_list=[]):
         super().__init__(parent)
@@ -25,7 +26,7 @@ class Report(QtWidgets.QMainWindow):
         self.report_table.setColumnCount(6)
         self.report_table.setRowCount(0)
         header_list = ["№", "Дата", "Контрагент", "Сума", "Примітки", "Стаття витрат"]
-        if self.op_type == 0 :
+        if self.op_type == 0:
             header_list[5] = 'Стаття находжень'
         self.report_table.setHorizontalHeaderLabels(header_list)
         self.report_table.resizeColumnsToContents()
@@ -59,22 +60,29 @@ class Report(QtWidgets.QMainWindow):
         left_box.addLayout(sum_box)
 
         right_box = QtWidgets.QVBoxLayout()
-        self.kontragent_filter = CheckableComboBox()#QtWidgets.QComboBox()
-        self.prymytky_filter = CheckableComboBox()#QtWidgets.QComboBox()
+        self.kontragent_filter = CheckableComboBox()  # QtWidgets.QComboBox()
+        self.prymytky_filter = CheckableComboBox()  # QtWidgets.QComboBox()
+        self.stattya_filter = CheckableComboBox()
         self.k_filter_button = QtWidgets.QPushButton("Фільтр контрагента")
         self.p_filter_button = QtWidgets.QPushButton("Фільтр примітки")
+        self.s_filter_button = QtWidgets.QPushButton("Фільтр статті")
         self.csv_button = QtWidgets.QPushButton("Завантажиити CSV")
 
         self.kontragent_filter.addItems(self.get_kontragent())
         self.prymytky_filter.addItems(self.get_prymytky())
+        self.stattya_filter.addItems(self.get_stattya())
         self.k_filter_button.clicked.connect(self.show_filtered_data_k)
         self.p_filter_button.clicked.connect(self.show_filtered_data_p)
+        self.s_filter_button.clicked.connect(self.show_filtered_data_st)
+
         self.csv_button.clicked.connect(self.download_csv)
         right_box.setAlignment(QtCore.Qt.AlignTop)
         right_box.addWidget(self.kontragent_filter)
         right_box.addWidget(self.k_filter_button)
         right_box.addWidget(self.prymytky_filter)
         right_box.addWidget(self.p_filter_button)
+        right_box.addWidget(self.stattya_filter)
+        right_box.addWidget(self.s_filter_button)
         right_box.addWidget(self.csv_button)
         main_box = QtWidgets.QHBoxLayout()
         main_box.addLayout(left_box)
@@ -86,20 +94,40 @@ class Report(QtWidgets.QMainWindow):
         self.report_table.cellClicked.connect(self.cell_was_clicked_1)
         self.report_table.itemSelectionChanged.connect(self.cell_was_clicked)
 
-    def show_filtered_data_k(self):
-        filtr = str(self.kontragent_filter.currentText())
+    def get_filter(self, filter):
+        p_values = []
+        for i in range(filter.count()):
+            if filter.itemChecked(i):
+                p_values.append(filter.itemText(i))
+        print(p_values)
+        return p_values
+
+    def show_filtered_data_k(self,):
+        filtr = self.get_filter(self.kontragent_filter)
+        # filtr = str(self.kontragent_filter.currentText())
         temp_list = []
         for t in self.tr_list:
-            if filtr == t.kontragent:
-                temp_list.append(t)
+            for p in filtr:
+                if p == t.kontragent:
+                    temp_list.append(t)
         Report(self, self.op_type, temp_list).show()
 
     def show_filtered_data_p(self):
-        filtr = str(self.prymytky_filter.currentText())
+        filtr = self.get_filter(self.prymytky_filter)
         temp_list = []
         for t in self.tr_list:
-            if filtr == t.annot:
-                temp_list.append(t)
+            for p in filtr:
+                if p == t.annot:
+                    temp_list.append(t)
+        Report(self, self.op_type, temp_list).show()
+
+    def show_filtered_data_st(self):
+        filtr = self.get_filter(self.stattya_filter)
+        temp_list = []
+        for t in self.tr_list:
+            for p in filtr:
+                if p == t.stattya_vytrat:
+                    temp_list.append(t)
         Report(self, self.op_type, temp_list).show()
 
     def get_kontragent(self):
@@ -118,11 +146,19 @@ class Report(QtWidgets.QMainWindow):
         # print(p_list)
         return p_list
 
+    def get_stattya(self):
+        s_list = []
+        for t in self.tr_list:
+            if t.stattya_vytrat not in s_list:
+                s_list.append(t.stattya_vytrat)
+        # print(p_list)
+        return s_list
+
     def get_stattya_vytrat(self):
         s_list = []
         for t in self.tr_list:
-            if t.statya_vytrat not in s_list:
-                s_list.append(t.statya_vytrat)
+            if t.stattya_vytrat not in s_list:
+                s_list.append(t.stattya_vytrat)
         # print(p_list)
         return s_list
 
