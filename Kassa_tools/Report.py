@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 
 from Kassa_tools.Check import Check
 from Kassa_tools.tools import transaction_type
-
+from Kassa_tools.Checkable_combo import CheckableComboBox
 
 class Report(QtWidgets.QMainWindow):
     def __init__(self, parent=None, op_type=0, tr_list=[]):
@@ -59,8 +59,8 @@ class Report(QtWidgets.QMainWindow):
         left_box.addLayout(sum_box)
 
         right_box = QtWidgets.QVBoxLayout()
-        self.kontragent_filter = QtWidgets.QComboBox()
-        self.prymytky_filter = QtWidgets.QComboBox()
+        self.kontragent_filter = CheckableComboBox()#QtWidgets.QComboBox()
+        self.prymytky_filter = CheckableComboBox()#QtWidgets.QComboBox()
         self.k_filter_button = QtWidgets.QPushButton("Фільтр контрагента")
         self.p_filter_button = QtWidgets.QPushButton("Фільтр примітки")
         self.csv_button = QtWidgets.QPushButton("Завантажиити CSV")
