@@ -136,7 +136,7 @@ class Report(QtWidgets.QMainWindow):
             if t.kontragent not in k_list:
                 k_list.append(t.kontragent)
         # print(k_list)
-        return k_list
+        return sorted(k_list)
 
     def get_prymytky(self):
         p_list = []
@@ -144,7 +144,7 @@ class Report(QtWidgets.QMainWindow):
             if t.annot not in p_list:
                 p_list.append(t.annot)
         # print(p_list)
-        return p_list
+        return sorted(p_list)
 
     def get_stattya(self):
         s_list = []
@@ -152,7 +152,7 @@ class Report(QtWidgets.QMainWindow):
             if t.stattya_vytrat not in s_list:
                 s_list.append(t.stattya_vytrat)
         # print(p_list)
-        return s_list
+        return sorted(s_list)
 
     def get_stattya_vytrat(self):
         s_list = []
@@ -160,7 +160,7 @@ class Report(QtWidgets.QMainWindow):
             if t.stattya_vytrat not in s_list:
                 s_list.append(t.stattya_vytrat)
         # print(p_list)
-        return s_list
+        return sorted(s_list)
 
     def cell_was_clicked(self):
         total_sum = 0
