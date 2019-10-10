@@ -189,6 +189,7 @@ class AddTransaction(QtWidgets.QMainWindow):
             add_transaction(tr)
             self.update_completer()
             self.clear()
+            self.datetime.setDateTime(QtCore.QDateTime.currentDateTime())
 
     def edit_tr(self):
         tr = Transaction(
@@ -205,7 +206,13 @@ class AddTransaction(QtWidgets.QMainWindow):
                          tr.data, tr.stattya_vytrat)
         self.update_completer()
         self.clear()
+        self.datetime.setDateTime(QtCore.QDateTime.currentDateTime())
         self.close()
+        
+    def show(self) :
+        super().show()
+        self.datetime.setDateTime(QtCore.QDateTime.currentDateTime())
+
 
 
 class RemoveTransaction(QtWidgets.QMainWindow):
