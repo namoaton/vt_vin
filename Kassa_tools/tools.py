@@ -237,5 +237,11 @@ def get_stattya_vytrat():
     vytraty = set()
     for elem in rq:
         vytraty.add(elem[0])
+        print(elem)
+    query = "SELECT stattya_vytrat FROM  nadhodjennya"
+    rq = make_request(query)
+    for elem in rq:
+        vytraty.add(elem[0])
+        # print(elem)
     print(vytraty)
     return  vytraty
