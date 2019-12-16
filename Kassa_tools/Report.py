@@ -241,11 +241,11 @@ class Report(QtWidgets.QMainWindow):
                 writer = csv.writer(f, delimiter=';')
                 row_count = 0
                 writer.writerow(
-                    ["№", "Дата", "Контрагент", "Сума", "Примітки"])
+                    ["№", "Дата", "Контрагент", "Сума", "Примітки","Стаття витрат"])
                 while row_count != self.report_table.rowCount():
                     row_append = []
                     column_counter = 0
-                    while column_counter != 5:
+                    while column_counter != 6:
                         row_append.append(
                             self.report_table.item(
                                 row_count, column_counter).text().replace(
