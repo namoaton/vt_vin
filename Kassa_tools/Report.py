@@ -67,6 +67,8 @@ class Report(QtWidgets.QMainWindow):
         self.p_filter_button = QtWidgets.QPushButton("Фільтр примітки")
         self.s_filter_button = QtWidgets.QPushButton("Фільтр статті")
         self.csv_button = QtWidgets.QPushButton("Завантажиити CSV")
+        self.csv_button_selected = QtWidgets.QPushButton("Завантажиити вибране CSV")
+        self.csv_button_selected.setHidden(True)
 
         self.kontragent_filter.addItems(self.get_kontragent())
         self.prymytky_filter.addItems(self.get_prymytky())
@@ -76,6 +78,7 @@ class Report(QtWidgets.QMainWindow):
         self.s_filter_button.clicked.connect(self.show_filtered_data_st)
 
         self.csv_button.clicked.connect(self.download_csv)
+        self.csv_button_selected.clicked.connect(self.download_selected_csv)
         right_box.setAlignment(QtCore.Qt.AlignTop)
         right_box.addWidget(self.kontragent_filter)
         right_box.addWidget(self.k_filter_button)
@@ -84,6 +87,7 @@ class Report(QtWidgets.QMainWindow):
         right_box.addWidget(self.stattya_filter)
         right_box.addWidget(self.s_filter_button)
         right_box.addWidget(self.csv_button)
+        right_box.addWidget(self.csv_button_selected)
         main_box = QtWidgets.QHBoxLayout()
         main_box.addLayout(left_box)
         main_box.addLayout(right_box)
@@ -164,10 +168,17 @@ class Report(QtWidgets.QMainWindow):
 
     def cell_was_clicked(self):
         total_sum = 0
+        selected = 0
         for item in self.report_table.selectedItems():
             if item.column() == 3:
                 print(item.text())
+                print(item.row())
                 total_sum = total_sum + float(item.text())
+                selected = selected + 1
+        if selected >0:
+            self.csv_button_selected.setHidden(False)
+        else:
+            self.csv_button_selected.setHidden(True)
         # item = self.report_table.itemAt(row, column)
         if total_sum:
             self.summ_value.setText("Сумма обраних комірок: %.2f" % total_sum)
@@ -225,6 +236,37 @@ class Report(QtWidgets.QMainWindow):
                 table.setItem(row_count, 6, QtWidgets.QTableWidgetItem(
                     tr.stattya_vytrat))
             row_count = row_count + 1
+
+    def download_selected_csv(self):
+        options = QtWidgets.QFileDialog.Options()
+        # options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "QFileDialog.getSaveFileName()",
+            "",
+            " CSV (*.csv);;Все файлы (*)",
+            options=options)
+        if fileName:
+            print(fileName)
+            with open(fileName, 'w', newline='') as f:
+                writer = csv.writer(f, delimiter=';')
+                row_count = 0
+                writer.writerow(
+                    ["№", "Дата", "Контрагент", "Сума", "Примітки", "Стаття витрат"])
+                row_in_list = []
+                for item in self.report_table.selectedItems():
+                    column_counter = 0
+                    row_append = []
+                    if item.row() not in row_in_list:
+                        row_in_list.append(item.row())
+                        while column_counter != 6:
+                            row_append.append(
+                                self.report_table.item(item.row(), column_counter).text().replace(
+                                    '.', ','))
+                            column_counter += 1
+                        print(row_append)
+                        writer.writerow(row_append)
+
 
     def download_csv(self):
         options = QtWidgets.QFileDialog.Options()
