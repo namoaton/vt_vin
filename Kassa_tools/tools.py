@@ -1,102 +1,80 @@
 import datetime
 import pymysql as sql
 import configparser
-# from Kassa import comm
-
-# Create conf file in  Kassa_tools/kassa.conf
-# with  such content
-
-# [CONFIG]
-# DATABASE = db_name
-# USER = db_username
-# PASSWORD= db_password
-# HOST = ip address of db
 
 configParser = configparser.RawConfigParser()
 configFilePath = "Kassa_tools/kassa.conf"
 configParser.read(configFilePath)
-database = configParser.get('CONFIG', 'DATABASE')
-user = configParser.get('CONFIG', 'USER')
-password = configParser.get('CONFIG', 'PASSWORD')
-host = configParser.get('CONFIG', 'HOST')
 
-period_list = [1, 1, 1, 1]
-summ_before_period = {
-    "nadhodjennya": 0,
-    "vydacha": 0,
-    "vytraty_za_tovar": 0,
-    "vytraty_za_tovar_pid_zvit": 0,
-    "vytraty_pid_zvit": 0,
-    "vytraty": 0
-}
-summ_cur_period = {
-    "nadhodjennya": 0,
-    "vydacha": 0,
-    "vytraty_za_tovar": 0,
-    "vytraty_za_tovar_pid_zvit": 0,
-    "vytraty_pid_zvit": 0,
-    "vytraty": 0
-}
-
-transaction_type = {
-    0: "надходження",
-    1: "видача",
-    2: "видача за товар",
-    3: "видача за товар під звіт",
-    4: "видача під звіт",
-    5: "гроші до видачі в кассі",
-    6: ""
-}
-polymer = [
-    "пе-бн", "ящик-бн", "стр-бн", "пет-бн", "пет-преформа-бн", "пет-пробка-бн",
-    "етикетка", "лента-пет-бн", "пп-беги-бн", "пет-пр-бн", "пе-цв-бн",
-    "пет-мікс-бн", "пе-сіp"
-]
-
-makulatura = ["5б-бн", "лоток-бн", "гільза-бн", "8в-бн"]
+DB_NAME = configParser.get('CONFIG', 'DATABASE')
+DB_USER = configParser.get('CONFIG', 'USER')
+DB_PASS = configParser.get('CONFIG', 'PASSWORD')
+DB_HOST = configParser.get('CONFIG', 'HOST')
 
 
-def get_period(i):
-    if i == 1:
-        return 0
-    if i == 2:
-        return 7
-    if i == 3:
-        return 31
+def _connect(dbname=None):
+    return sql.connect(
+        host=host,
+        user=user,
+        password=password,
+        database=(dbname or database),
+        charset="utf8mb4",   # safe default; ok if tables are utf8
+        autocommit=False
+    )
 
+
+def get_conn(database=None):
+    """Create a PyMySQL connection using keyword-only args."""
+    return sql.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASS,
+        database=(database or DB_NAME),
+        charset="utf8mb4",
+        autocommit=False
+    )
 
 def make_request(query):
-    db = sql.connect(
-        host, user, password, database, use_unicode=True, charset="utf8")
-    cur = db.cursor()
-    cur.execute(query)
-    result = cur.fetchall()
-    cur.close()
-    db.close()
-    return result
+    with _connect() as db:
+        with db.cursor() as cur:
+            cur.execute(query)
+            return cur.fetchall()
 
+# def make_request(query, params=None, database=None):
+#     with get_conn(database) as conn:
+#         with conn.cursor() as cur:
+#             cur.execute(query, params or ())
+#             return cur.fetchall()
+
+# def make_weight_request(doc_number):
+#     # explicit DB "vasy"
+#     rows = make_request(
+#         "SELECT * FROM records WHERE id = %s",
+#         params=(doc_number,),
+#         database="vasy"
+#     )
+#     return rows
 
 def make_weight_request(doc_number):
-    db = sql.connect(
-        host, user, password, "vasy", use_unicode=True, charset="utf8")
-    cur = db.cursor()
-    query = "SELECT * FROM records WHERE id = %s" % doc_number
-    cur.execute(query)
-    result = cur.fetchall()
-    cur.close()
-    db.close()
-    return result
+    with _connect("vasy") as db:
+        with db.cursor() as cur:
+            cur.execute("SELECT * FROM records WHERE id = %s", (doc_number,))
+            return cur.fetchall()
 
 
+# def write_to_db(query, params=None, database=None):
+#     with get_conn(database) as conn:
+#         with conn.cursor() as cur:
+#             cur.execute(query, params or ())
+#             last_id = cur.lastrowid
+#         conn.commit()
+#     return last_id
 def write_to_db(query):
-    db = sql.connect(
-        host, user, password, database, use_unicode=True, charset="utf8")
-    cur = db.cursor()
-    cur.execute(query)
-    cur_id = cur.lastrowid
-    db.commit()
-    cur.close()
-    db.close()
+    with _connect() as db:
+        with db.cursor() as cur:
+            cur.execute(query)
+            cur_id = cur.lastrowid
+        db.commit()
     return cur_id
 
 
@@ -105,61 +83,49 @@ def get_last_money():
     print(result[0][0])
     return result[0][0]
 
-
 def get_summ_vydacha():
     result = make_request("SELECT * FROM v_kasse")
     print(result[0][0])
     return result[0][0]
 
+def get_period(i):
+    # 1=current day/window start today, 2=7 days, 3=31 days; default to 0 (from epoch)
+    return {1: 0, 2: 7, 3: 31}.get(i, 0)
+
+def _date_cutoff(days_back):
+    now = datetime.datetime.now() - datetime.timedelta(days=days_back or 0)
+    return now.strftime('%Y-%m-%d')
 
 def get_summ_req(period, table, op_type):
-    period = get_period(period_list[2])
-    now = datetime.datetime.now() - datetime.timedelta(days=period)
-    formatted_date = now.strftime('%Y-%m-%d')
+    """Sum strictly BEFORE the cutoff date."""
+    days = get_period(period)
+    cutoff = _date_cutoff(days)
     if op_type == 0:
-        rq = make_request("SELECT sum(summa) FROM %s WHERE data<'%s'" %
-                          (table, formatted_date))
+        rq = make_request(f"SELECT SUM(summa) FROM {table} WHERE data < %s", (cutoff,))
     else:
-        rq = make_request(
-            "SELECT sum(summa) FROM %s WHERE op_type=%d and  data<'%s'" %
-            (table, op_type, formatted_date))
-    # print(rq_nadhod)
-    if rq[0][0]:
-        return rq[0][0]
-    return 0
-
+        rq = make_request(f"SELECT SUM(summa) FROM {table} WHERE op_type = %s AND data < %s",
+                          (op_type, cutoff))
+    return rq[0][0] or 0
 
 def get_summ_cur_req(period, table, op_type):
-    period = get_period(period_list[2])
-    now = datetime.datetime.now() - datetime.timedelta(days=period)
-    formatted_date = now.strftime('%Y-%m-%d')
+    """Sum ON/AFTER the cutoff date."""
+    days = get_period(period)
+    cutoff = _date_cutoff(days)
     if op_type == 0:
-        rq = make_request("SELECT sum(summa) FROM %s WHERE data>='%s'" %
-                          (table, formatted_date))
+        rq = make_request(f"SELECT SUM(summa) FROM {table} WHERE data >= %s", (cutoff,))
     else:
-        rq = make_request(
-            "SELECT sum(summa) FROM %s WHERE op_type=%d and  data>='%s'" %
-            (table, op_type, formatted_date))
-    # print(rq_nadhod)
-    if rq[0][0]:
-        return rq[0][0]
-    return 0
-
+        rq = make_request(f"SELECT SUM(summa) FROM {table} WHERE op_type = %s AND data >= %s",
+                          (op_type, cutoff))
+    return rq[0][0] or 0
 
 def get_summ_period():
-    # nadhodjennya
     global summ_before_period
-    rq_nadhod = get_summ_req(period_list[2], 'nadhodjennya', 0)
-    # do vydachy
-    rq_vydacha = get_summ_req(period_list[0], 'vydacha', 5)
-    # vydacha_za tovar
-    rq_vyd_tov = get_summ_req(period_list[3], 'vydacha', 2)
-    # vydacha za tovar pid zvit
-    rq_vyd_tov_z = get_summ_req(period_list[3], 'vydacha', 3)
-    # vydacha pid zvit
-    rq_vyd_z = get_summ_req(period_list[1], 'vydacha', 4)
-    # vydacha
-    rq_vyd = get_summ_req(period_list[1], 'vydacha', 1)
+    rq_nadhod   = get_summ_req(period_list[2], 'nadhodjennya', 0)
+    rq_vydacha  = get_summ_req(period_list[0], 'vydacha',      5)
+    rq_vyd_tov  = get_summ_req(period_list[3], 'vydacha',      2)
+    rq_vyd_tov_z= get_summ_req(period_list[3], 'vydacha',      3)
+    rq_vyd_z    = get_summ_req(period_list[1], 'vydacha',      4)
+    rq_vyd      = get_summ_req(period_list[1], 'vydacha',      1)
     summ_before_period = {
         "nadhodjennya": rq_nadhod,
         "vydacha": rq_vydacha,
@@ -171,21 +137,14 @@ def get_summ_period():
     print(summ_before_period)
     return summ_before_period
 
-
 def get_summ_cur():
-    # nadhodjennya
     global summ_cur_period
-    rq_nadhod = get_summ_cur_req(period_list[2], 'nadhodjennya', 0)
-    # do vydachy
-    rq_vydacha = get_summ_cur_req(period_list[0], 'vydacha', 5)
-    # vydacha_za tovar
-    rq_vyd_tov = get_summ_cur_req(period_list[3], 'vydacha', 2)
-    # vydacha za tovar pid zvit
-    rq_vyd_tov_z = get_summ_cur_req(period_list[3], 'vydacha', 3)
-    # vydacha pid zvit
-    rq_vyd_z = get_summ_cur_req(period_list[1], 'vydacha', 4)
-    # vydacha
-    rq_vyd = get_summ_cur_req(period_list[1], 'vydacha', 1)
+    rq_nadhod   = get_summ_cur_req(period_list[2], 'nadhodjennya', 0)
+    rq_vydacha  = get_summ_cur_req(period_list[0], 'vydacha',      5)
+    rq_vyd_tov  = get_summ_cur_req(period_list[3], 'vydacha',      2)
+    rq_vyd_tov_z= get_summ_cur_req(period_list[3], 'vydacha',      3)
+    rq_vyd_z    = get_summ_cur_req(period_list[1], 'vydacha',      4)
+    rq_vyd      = get_summ_cur_req(period_list[1], 'vydacha',      1)
     summ_cur_period = {
         "nadhodjennya": rq_nadhod,
         "vydacha": rq_vydacha,
@@ -195,53 +154,50 @@ def get_summ_cur():
         "vytraty": rq_vyd
     }
     print(summ_cur_period)
-    return  summ_cur_period
-
+    return summ_cur_period
 
 def add_transaction(transaction):
-    db_name = "vydacha"
-    if transaction.op_type == 0:
-        db_name = "nadhodjennya"
-    query = "INSERT INTO %s(data,kontragent, summa, pid_zvit, annot, op_type, stattya_vytrat) VALUES('%s','%s',%.2f,%d," \
-            "'%s',%d,'%s')" % (
-                db_name, transaction.data, transaction.kontragent, transaction.summa,
-                transaction.zvit, transaction.annot, transaction.op_type, transaction.stattya_vytrat)
-    print(query)
-    write_to_db(query)
+    db_name = "nadhodjennya" if transaction.op_type == 0 else "vydacha"
+    query = f"""
+        INSERT INTO {db_name}
+        (data, kontragent, summa, pid_zvit, annot, op_type, stattya_vytrat)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """
+    params = (
+        transaction.data, transaction.kontragent, float(transaction.summa),
+        int(transaction.zvit), transaction.annot, int(transaction.op_type),
+        transaction.stattya_vytrat or ""
+    )
+    print(query, params)
+    write_to_db(query, params)
     transaction.comm.reload_all.emit()
 
-
 def edit_transaction(transaction, id, summa, op_type, annot, data, stattya_vytrat):
-    db_name = "vydacha"
-    data_str = data.strftime('%Y-%m-%d')
-    if transaction.op_type == 0:
-        db_name = "nadhodjennya"
-    query = "UPDATE %s SET summa=%s, pid_zvit=0,annot='%s',op_type=%d, data='%s', stattya_vytrat='%s' WHERE id=%s" % (
-        db_name, summa, annot, op_type, data_str, stattya_vytrat, id)
-    print(query)
-    write_to_db(query)
+    """Edit and keep row in correct table based on *new* op_type."""
+    db_name = "nadhodjennya" if int(op_type) == 0 else "vydacha"
+    data_str = data.strftime('%Y-%m-%d') if hasattr(data, "strftime") else str(data)
+    query = f"""
+        UPDATE {db_name}
+        SET summa=%s, pid_zvit=%s, annot=%s, op_type=%s, data=%s, stattya_vytrat=%s
+        WHERE id=%s
+    """
+    params = (float(summa), 0, annot, int(op_type), data_str, stattya_vytrat or "", int(id))
+    print(query, params)
+    write_to_db(query, params)
     transaction.comm.reload_all.emit()
 
 def get_kontragents():
-    query = "SELECT kontragent FROM vydacha"
-    rq = make_request(query)
-    kontragents  = set()
-    for elem in rq:
-        kontragents.add(elem[0])
-    print (kontragents)
+    rq = make_request("SELECT kontragent FROM vydacha")
+    kontragents = {row[0] for row in rq if row and row[0]}
+    print(kontragents)
     return kontragents
 
 def get_stattya_vytrat():
-    query = "SELECT stattya_vytrat FROM vydacha"
-    rq = make_request(query)
     vytraty = set()
-    for elem in rq:
-        vytraty.add(elem[0])
-        print(elem)
-    query = "SELECT stattya_vytrat FROM  nadhodjennya"
-    rq = make_request(query)
-    for elem in rq:
-        vytraty.add(elem[0])
-        # print(elem)
+    for table in ("vydacha", "nadhodjennya"):
+        rq = make_request(f"SELECT stattya_vytrat FROM {table}")
+        for elem in rq:
+            if elem and elem[0]:
+                vytraty.add(elem[0])
     print(vytraty)
-    return  vytraty
+    return vytraty
